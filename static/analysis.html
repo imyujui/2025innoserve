@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>財報分析</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <style>
+    .chart-container { position: relative; height:40vh; width:80vw; margin: 20px auto; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 20px 0; padding: 0 10%; }
+    .kpi-card { background: #eef; padding: 1rem; border-radius: 8px; text-align: center; }
+    .kpi-card h3 { margin-top: 0; }
+    .kpi-card p { font-size: 1.5rem; font-weight: bold; margin-bottom: 0; }
+  </style>
+</head>
+<body onload="displayAnalysis()">
+  <header>
+    <h2 onclick="window.location.href='/dashboard'">← 回主頁</h2>
+  </header>
+
+  <main>
+    <h1 id="reportTitle">財報分析結果</h1>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <h3>自由現金流量 (FCF)</h3>
+        <p id="kpi-fcf">計算中...</p>
+      </div>
+      <div class="kpi-card">
+        <h3>營運資金 (WC)</h3>
+        <p id="kpi-wc">計算中...</p>
+      </div>
+      <div class="kpi-card">
+        <h3>現金轉換週期 (CCC)</h3>
+        <p id="kpi-ccc">計算中...</p>
+      </div>
+    </div>
+
+    <section>
+        <h2>AI 智慧摘要</h2>
+        <p id="aiSummary">分析中...</p>
+    </section>
+
+    <div class="chart-container">
+        <h2>主要會計科目</h2>
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <button id="futureButton" style="display: none;" onclick="goToFuture()">查看未來預測 ➜</button>
+  </main>
+
+  <script>
+    // !!! 請將 YOUR_BACKEND_API_URL 換成您後端的實際網址 !!!
+    const API_BASE_URL = ""; // 或 const API_BASE_URL = "/";
+    // 之後呼叫 API 時，fetch("/token") 或 fetch("/users/") 即可
+    let currentReportId = null; // 用於跳轉到 future.html
+
+    function displayAnalysis() {
+      const resultString = sessionStorage.getItem('latestAnalysisResult');
+      const titleEl = document.getElementById('reportTitle');
+      const fcfEl = document.getElementById('kpi-fcf');
+      const wcEl = document.getElementById('kpi-wc');
+      const cccEl = document.getElementById('kpi-ccc');
+      const summaryEl = document.getElementById('aiSummary');
+      const futureBtn = document.getElementById('futureButton');
+
+      if (!resultString) {
+        titleEl.textContent = "找不到分析結果";
+        summaryEl.textContent = "請先返回上傳頁面重新上傳。";
+        fcfEl.textContent = 'N/A';
+        wcEl.textContent = 'N/A';
+        cccEl.textContent = 'N/A';
+        return;
+      }
+
+      try {
+        const result = JSON.parse(resultString);
+        currentReportId = result.id; // 儲存報告 ID
+
+        titleEl.textContent = `${result.period} 財報分析結果 (ID: ${result.id})`;
+
+        // 顯示 KPI (格式化數字)
+        fcfEl.textContent = result.free_cash_flow !== null ? result.free_cash_flow.toLocaleString() : '計算錯誤';
+        wcEl.textContent = result.working_capital !== null ? result.working_capital.toLocaleString() : '計算錯誤';
+        cccEl.textContent = result.cash_conversion_cycle !== null ? `${result.cash_conversion_cycle} 天` : 'N/A (示意)';
+
+        // 顯示 AI 摘要
+        summaryEl.textContent = result.ai_summary || '無法生成摘要';
+
+        // 顯示圖表 (使用 Chart.js)
+        renderChart(result.line_items);
+
+        // 顯示未來預測按鈕
+        futureBtn.style.display = 'inline-block';
+
+      } catch (error) {
+        console.error("Error parsing analysis result:", error);
+        titleEl.textContent = "分析結果格式錯誤";
+        summaryEl.textContent = "無法顯示分析結果。";
+        fcfEl.textContent = '錯誤';
+        wcEl.textContent = '錯誤';
+        cccEl.textContent = '錯誤';
+      }
+    }
+
+    function renderChart(lineItems) {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const labels = [];
+        const data = [];
+
+        // 提取主要科目數據用於圖表
+        const chartItems = ["稅後淨利", "應收帳款", "存貨", "應付帳款"]; // 可以調整想顯示的科目
+        if (lineItems && Array.isArray(lineItems)) {
+            lineItems.forEach(item => {
+                if (chartItems.includes(item.item_name)) {
+                    labels.push(item.item_name);
+                    // 確保 data 是數字
+                    data.push(isNaN(parseFloat(item.item_value)) ? 0 : parseFloat(item.item_value));
+                }
+            });
+        } else {
+            console.error("line_items 數據格式錯誤或不存在");
+        }
+
+
+        // 如果圖表已存在，先銷毀舊的 (可選)
+        // if (window.myAnalysisChart) {
+        //   window.myAnalysisChart.destroy();
+        // }
+
+        // 建立新的圖表
+        window.myAnalysisChart = new Chart(ctx, { // 將圖表實例存到全域變數，方便管理
+            type: 'bar', // 或 'pie', 'line' 等
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '金額',
+                    data: data,
+                    backgroundColor: [ // 可以自訂顏色
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)' // 多加一個顏色以防萬一
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // 讓圖表填滿容器
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { // 格式化 Y 軸數字
+                            callback: function(value, index, values) {
+                                return value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                 plugins: { // 讓滑鼠移上去時顯示完整數字
+                     tooltip: {
+                         callbacks: {
+                             label: function(context) {
+                                 let label = context.dataset.label || '';
+                                 if (label) {
+                                     label += ': ';
+                                 }
+                                 if (context.parsed.y !== null) {
+                                     label += context.parsed.y.toLocaleString();
+                                 }
+                                 return label;
+                             }
+                         }
+                     }
+                 }
+            }
+        });
+    }
+
+
+    function goToFuture() {
+      if (currentReportId) {
+        // 將 report_id 作為 URL 參數傳遞給 future.html
+        window.location.href = `/future?report_id=${currentReportId}`;
+      } else {
+        alert('無法獲取報告 ID，無法進行預測');
+      }
+    }
+
+    // 可選：頁面離開時清除 sessionStorage，避免下次進入看到舊資料
+    // window.addEventListener('beforeunload', () => {
+    //     sessionStorage.removeItem('latestAnalysisResult');
+    // });
+
+  </script>
+</body>
+</html>

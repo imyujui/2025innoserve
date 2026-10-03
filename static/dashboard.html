@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>SmartFin 控制台</title>
+<style>
+  body {
+    font-family:"Segoe UI", sans-serif;
+    margin:0;
+    background:#f4f6f8;
+    font-size: 16px; /* 設定基礎字體大小 */
+  }
+  header {
+    background:#004aad;
+    color:white;
+    padding:1rem 2rem;
+    display:flex;
+    /* justify-content:space-between; */ /* 移除，讓 h2 的 auto margin 生效 */
+    align-items:center;
+  }
+  header h2 { /* 給標題左右 auto margin 讓它置中 */
+      margin: 0 auto;
+      font-size: 3em; /* 放大標題 */
+  }
+
+  header button { /* Header 內按鈕的基本樣式 */
+    /* --- 修改這裡：放大 Header 按鈕 --- */
+    padding: 1rem 2rem;   /* 增加 padding */
+    font-size: 2em;     /* 將字體放大到基礎字體的 2 倍 */
+    /* ------------------------------------ */
+    border: none;
+    border-radius: 8px;
+    background: #eee;
+    color: #004aad;
+    font-weight: bold;
+    cursor: pointer;
+    /* margin-right: 2rem; */ /* 移除通用 margin */
+  }
+   header button:hover {
+      background: #ddd;
+   }
+
+  /* --- 針對 Header 左右按鈕的邊距 --- */
+  header button:first-child { /* 回首頁按鈕 */
+      margin-right: 2rem; /* 只給第一個按鈕右邊距 */
+  }
+  header button:last-child { /* 登出按鈕 */
+      margin-left: 2rem; /* 只給最後一個按鈕左邊距 */
+  }
+  /* ------------------------------------ */
+
+  .main {
+    text-align:center;
+    padding: 5rem 3rem;
+  }
+
+  .main button { /* 主區域的三個按鈕樣式 */
+    margin: 1.5rem;
+    padding: 2rem 4rem;
+    border: none;
+    border-radius: 15px;
+    background: #0f71ff;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 2.5em; /* 主按鈕字體大小 */
+    transition: background-color 0.2s;
+  }
+  .main button:hover {
+      background-color: #0056b3;
+  }
+
+  #welcomeMessage {
+    margin-right: 1rem; /* 與登出按鈕的間距 */
+    font-size: 1.2em;
+    white-space: nowrap; /* 防止歡迎訊息換行 */
+  }
+</style>
+</head>
+<body onload="checkLoginAndWelcome()">
+  <header>
+    <button onclick="window.location.href='/'">回首頁</button>
+    <h2>SmartFin 控制台</h2>
+    <span id="welcomeMessage"></span>
+    <button onclick="logout()">登出</button>
+  </header>
+  <div class="main">
+    <button onclick="window.location.href='/query'">查詢</button>
+    <button onclick="window.location.href='/upload'">上傳</button>
+    <button onclick="window.location.href='/history'">歷史</button>
+  </div>
+
+  <script>
+    const API_BASE_URL = ""; // 相對路徑
+
+    async function checkLoginAndWelcome(){
+      const token = localStorage.getItem('accessToken');
+      const tokenType = localStorage.getItem('tokenType') || 'Bearer';
+
+      if(!token){
+        window.location.href = '/login'; // 跳轉登入
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/me/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `${tokenType} ${token}`,
+            'accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          document.getElementById('welcomeMessage').textContent = `歡迎，${userData.username}！`;
+        } else {
+          logout(); // Token 無效或過期，登出
+        }
+      } catch (error) {
+        console.error('Error verifying token:', error);
+        alert('驗證登入狀態時發生錯誤，請重新登入。');
+        logout(); // 發生錯誤也登出
+      }
+    }
+
+    function logout(){
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('tokenType');
+      window.location.href = '/'; // 跳轉回首頁
+    }
+  </script>
+</body>
+</html>

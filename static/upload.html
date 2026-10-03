@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>上傳財報</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* Override external styles for this page */
+    body {
+        font-size: 16px; /* Base font size */
+        line-height: 1.8; /* Increase line height for larger text */
+    }
+    main {
+        padding: 3rem; /* Add more padding */
+        max-width: 800px; /* Limit width for better centering on large screens */
+        margin: 40px auto; /* Center main content */
+    }
+    h1 {
+        font-size: 4em; /* ~2x default h1 */
+        margin-bottom: 1.5em;
+    }
+    label {
+        display: block; /* Make labels block elements */
+        font-size: 2em; /* ~2x default label */
+        margin-top: 2em; /* Increase space above labels */
+        margin-bottom: 0.8em; /* Space below label */
+        font-weight: bold;
+        text-align: left; /* Align labels left */
+        margin-left: 10%; /* Indent labels slightly */
+    }
+    input[type="text"],
+    input[type="file"] {
+        display: block; /* Make inputs block elements */
+        width: 80%; /* Adjust width */
+        padding: 20px; /* Increase padding */
+        margin: 0 auto 2em auto; /* Center inputs and add bottom margin */
+        font-size: 2em; /* Increase font size */
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-sizing: border-box; /* Include padding in width */
+    }
+    /* Style file input button differently */
+    input[type="file"] {
+        padding: 10px; /* Slightly less padding for file input */
+         background-color: #eee; /* Background color */
+         cursor: pointer;
+    }
+    input[type="file"]::file-selector-button {
+        padding: 15px 25px;
+        margin-right: 15px;
+        background: #004aad;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.8em; /* Button text relative to input size */
+    }
+     input[type="file"]::file-selector-button:hover {
+        background: #0066ff;
+     }
+
+    button {
+        padding: 25px 70px; /* Increase button padding significantly */
+        font-size: 2.2em; /* Increase button font size */
+        margin-top: 2em; /* Increase space above button */
+        border-radius: 12px;
+    }
+    p#uploadStatus {
+        font-size: 1.8em; /* Increase status message font size */
+        margin-top: 2em;
+        min-height: 1.8em; /* Reserve space for the message */
+    }
+
+    /* Adjust header styles */
+    header h2 {
+        font-size: 2em; /* Increase header back link size */
+        margin: 0;
+    }
+     header {
+        padding: 25px 40px; /* Increase header padding */
+    }
+
+  </style>
+</head>
+<body>
+  <header>
+    <h2 onclick="window.location.href='/dashboard'">← 回主頁</h2>
+  </header>
+
+  <main>
+    <h1>上傳財報</h1>
+    <label for="periodInput">財報期間 (例如 2025-Q3):</label>
+    <input type="text" id="periodInput" placeholder="YYYY-QX" required>
+
+    <label for="fileInput">選擇財報檔案 (.xlsx):</label>
+    <input type="file" id="fileInput" accept=".xlsx" required>
+
+    <button onclick="uploadFile()">上傳並分析</button>
+    <p id="uploadStatus"></p>
+  </main>
+
+  <script>
+    const API_BASE_URL = ""; // Relative path
+
+    async function uploadFile() {
+      const fileInput = document.getElementById('fileInput');
+      const periodInput = document.getElementById('periodInput');
+      const uploadStatus = document.getElementById('uploadStatus');
+      uploadStatus.textContent = ''; // Clear status
+
+      const token = localStorage.getItem('accessToken');
+      const tokenType = localStorage.getItem('tokenType') || 'Bearer';
+
+      if (!token) {
+        alert('請先登入');
+        window.location.href = '/login';
+        return;
+      }
+
+      if (fileInput.files.length === 0) {
+        alert('請先選擇一個檔案');
+        return;
+      }
+      const file = fileInput.files[0];
+      const period = periodInput.value.trim();
+
+      if (!period) {
+          alert('請輸入財報期間');
+          return;
+      }
+
+      uploadStatus.textContent = '上傳分析中，請稍候...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      // Period as query parameter
+      const uploadUrl = `${API_BASE_URL}/users/me/reports/?period=${encodeURIComponent(period)}`;
+
+      try {
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `${tokenType} ${token}`,
+            'accept': 'application/json'
+            // Content-Type automatically set by browser for FormData
+          },
+          body: formData
+        });
+
+        if (response.ok) {
+          const analysisResult = await response.json();
+          console.log('Analysis Result:', analysisResult);
+
+          sessionStorage.setItem('latestAnalysisResult', JSON.stringify(analysisResult));
+
+          alert(`上傳成功：${file.name}`);
+          window.location.href = '/analysis'; // Redirect to analysis page
+        } else {
+          const errorData = await response.json();
+          uploadStatus.textContent = `上傳失敗：${errorData.detail || response.statusText}`;
+          console.error('Upload failed:', errorData);
+        }
+      } catch (error) {
+        uploadStatus.textContent = '上傳時發生網路錯誤，請稍後再試。';
+        console.error('Upload network error:', error);
+      }
+    }
+  </script>
+</body>
+</html>

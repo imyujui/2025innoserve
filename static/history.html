@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>歷史紀錄</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* Override external styles for this page */
+    body {
+        font-size: 16px; /* Base font size */
+        line-height: 1.8; /* Increase line height further */
+    }
+    main {
+        padding: 3rem; /* Increase padding */
+        max-width: 950px; /* Slightly wider */
+        margin: 40px auto; /* Center main content */
+    }
+    h1 {
+        font-size: 3.5em; /* Increase H1 size */
+        margin-bottom: 1.8em;
+    }
+    ul#historyList {
+        padding-left: 0;
+    }
+    #historyList li {
+        list-style: none;
+        margin-bottom: 20px; /* Increase space between items */
+        padding: 25px 30px; /* Increase padding inside items */
+        background: #eee;
+        border-radius: 10px; /* Slightly larger radius */
+        text-align: left;
+        /* --- 修改這裡：放大字體 --- */
+        font-size: 2em; /* Increase font size (~2x base) */
+        /* -------------------------- */
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #historyList p { /* Style for loading/error messages inside the list */
+         /* --- 修改這裡：放大字體 --- */
+         font-size: 2em; /* Increase font size (~2x base) */
+         /* -------------------------- */
+         text-align: center;
+         padding: 30px; /* Increase padding */
+    }
+    #historyList li strong {
+        font-weight: 600;
+    }
+    #historyList li a {
+        margin-left: 25px; /* Increase space */
+        text-decoration: none;
+        color: #004aad;
+        font-weight: bold;
+        white-space: nowrap;
+        padding: 10px 15px; /* Increase link padding */
+        border-radius: 6px;
+        transition: background-color 0.2s;
+    }
+     #historyList li a:hover {
+        background-color: #ddd;
+     }
+
+    /* Adjust header styles */
+    header h2 {
+        font-size: 2em; /* Increase header back link size */
+        margin: 0;
+    }
+     header {
+        padding: 25px 35px; /* Increase header padding */
+    }
+  </style>
+</head>
+<body onload="loadHistory()">
+  <header>
+    <h2 onclick="window.location.href='/dashboard'">← 回主頁</h2>
+  </header>
+
+  <main>
+    <h1>歷史分析紀錄</h1>
+    <ul id="historyList"><p>載入紀錄中...</p></ul>
+  </main>
+
+  <script>
+    const API_BASE_URL = ""; // Relative path
+
+    async function loadHistory() {
+      const list = document.getElementById('historyList');
+      const token = localStorage.getItem('accessToken');
+      const tokenType = localStorage.getItem('tokenType') || 'Bearer';
+
+      if (!token) {
+        list.innerHTML = '<p>錯誤：請先登入。</p>';
+        return;
+      }
+
+      list.innerHTML = '<p>載入紀錄中...</p>'; // Show loading message
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/me/reports/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `${tokenType} ${token}`,
+            'accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const history = await response.json();
+
+          if (history.length === 0) {
+            list.innerHTML = '<p>尚未有分析紀錄。</p>';
+          } else {
+            list.innerHTML = ''; // Clear loading message
+            history.sort((a, b) => b.id - a.id);
+            history.forEach((item, index) => {
+              const li = document.createElement('li');
+              const textSpan = document.createElement('span');
+              textSpan.innerHTML = `${index + 1}. <strong>期間：${item.period || '未知'}</strong> (ID: ${item.id})`;
+
+              const link = document.createElement('a');
+              link.href = "#";
+              link.textContent = '查看分析';
+              link.onclick = (event) => {
+                  event.preventDefault();
+                  viewAnalysis(item.id);
+              };
+
+              li.appendChild(textSpan);
+              li.appendChild(link);
+              list.appendChild(li);
+            });
+          }
+        } else {
+           const errorData = await response.json();
+           list.innerHTML = `<p>載入歷史紀錄失敗：${errorData.detail || response.statusText}</p>`;
+        }
+      } catch (error) {
+        console.error('Error loading history:', error);
+        list.innerHTML = '<p>載入歷史紀錄時發生網路錯誤。</p>';
+      }
+    }
+
+    async function viewAnalysis(reportId) {
+        const list = document.getElementById('historyList');
+        list.innerHTML = `<p>正在載入報告 ${reportId} 的詳細資料...</p>`;
+        const token = localStorage.getItem('accessToken');
+        const tokenType = localStorage.getItem('tokenType') || 'Bearer';
+
+        if (!token) {
+            list.innerHTML = '<p>錯誤：請先登入。</p>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/me/reports/${reportId}`, {
+                 method: 'GET',
+                 headers: {
+                     'Authorization': `${tokenType} ${token}`,
+                     'accept': 'application/json'
+                 }
+            });
+
+            if (response.ok) {
+                 const analysisResult = await response.json();
+                 sessionStorage.setItem('latestAnalysisResult', JSON.stringify(analysisResult));
+                 window.location.href = '/analysis'; // Redirect to analysis page
+            } else {
+                 const errorData = await response.json();
+                 list.innerHTML = `<p>載入報告 ${reportId} 失敗：${errorData.detail || response.statusText}. <a href="#" onclick="loadHistory(); return false;">返回列表</a></p>`;
+            }
+        } catch (error) {
+             console.error(`Error fetching report ${reportId}:`, error);
+             list.innerHTML = `<p>載入報告 ${reportId} 時發生網路錯誤. <a href="#" onclick="loadHistory(); return false;">返回列表</a></p>`;
+        }
+    }
+  </script>
+</body>
+</html>

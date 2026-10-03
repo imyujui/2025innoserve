@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SmartFin 登入</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif; /* 保留字體 */
+    text-align: center;
+    margin-top: 100px;
+    font-size: 16px; /* 設定基礎字體大小，方便後續調整 */
+  }
+  h1 {
+    font-size: 4em; /* 將 H1 放大 (原預設約 2em) */
+    margin-bottom: 1em; /* 增加下方間距 */
+  }
+  input {
+    display: block;
+    margin: 20px auto; /* 增加垂直間距 */
+    padding: 20px; /* 增加內邊距 */
+    width: 400px; /* 加寬輸入框 */
+    font-size: 2em; /* 放大輸入框文字 */
+    border: 1px solid #ccc; /* 加上邊框更清晰 */
+    border-radius: 8px; /* 圓角 */
+  }
+  button {
+    padding: 20px 60px; /* 增加按鈕大小 */
+    background: #004aad;
+    color: white;
+    border: none;
+    border-radius: 12px; /* 增加圓角 */
+    cursor: pointer;
+    font-size: 2em; /* 放大按鈕文字 */
+    margin-top: 20px; /* 增加上方間距 */
+  }
+  button:hover {
+    background: #0066ff;
+  }
+  p {
+    font-size: 1.8em; /* 放大段落文字 */
+    margin-top: 30px; /* 增加上方間距 */
+  }
+  p a {
+    font-size: 1em; /* 連結文字大小繼承 p */
+    color: #004aad; /* 連結顏色 */
+    text-decoration: none; /* 去除底線 */
+  }
+  p a:hover {
+    text-decoration: underline; /* 滑鼠移上去時加底線 */
+  }
+  .error {
+    color: red;
+    margin-top: 20px;
+    font-size: 1.8em; /* 放大錯誤訊息 */
+  }
+</style>
+</head>
+<body>
+  <h1>SmartFin 登入</h1>
+  <input type="text" id="username" placeholder="帳號" required />
+  <input type="password" id="password" placeholder="密碼" required />
+  <button onclick="login()">登入</button>
+  <p class="error" id="errorMessage"></p>
+  <p>還沒有帳號嗎？ <a href="/register">點此註冊</a></p> <script>
+    const API_BASE_URL = ""; // 相對路徑
+
+    async function login(){
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.textContent = '';
+
+      const username = usernameInput.value;
+      const password = passwordInput.value;
+
+      if (!username || !password) {
+        errorMessage.textContent = '請輸入帳號和密碼';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('username', username);
+      formData.append('password', password);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/token`, {
+          method: 'POST',
+          body: new URLSearchParams(formData)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('accessToken', data.access_token);
+          localStorage.setItem('tokenType', data.token_type);
+          // localStorage.setItem('loggedIn', 'true'); // 可以移除，以 token 為準
+          window.location.href = '/dashboard';
+        } else {
+          const errorData = await response.json();
+          errorMessage.textContent = `登入失敗：${errorData.detail || response.statusText}`;
+          console.error('Login failed:', errorData);
+        }
+      } catch (error) {
+        errorMessage.textContent = '登入時發生網路錯誤，請稍後再試。';
+        console.error('Login network error:', error);
+      }
+    }
+  </script>
+</body>
+</html>

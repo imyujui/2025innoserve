@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartFin 首頁</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      background: #f9fafb;
+      color: #333;
+    }
+    header {
+      background: #004aad;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { margin: 0; }
+    .hero {
+      text-align: center;
+      padding: 5rem 2rem;
+      background: linear-gradient(to right, #004aad, #0f71ff);
+      color: white;
+    }
+    .hero h2 { font-size: 2rem; }
+    .buttons button { /* 讓按鈕樣式與 style.css 一致 */
+        background: white;
+        color: #004aad;
+        border: none;
+        padding: 10px 20px;
+        margin: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold; /* 加粗字體 */
+    }
+    .buttons button:hover {
+        background: #eee; /* 滑鼠移上去時變色 */
+    }
+
+    .about {
+      padding: 3rem;
+      text-align: center;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SmartFin</h1>
+    <div class="buttons">
+      <button onclick="window.location.href='/login'">登入</button>
+      <button onclick="window.location.href='/register'">註冊</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h2>讓財報分析更簡單，讓決策更聰明。</h2>
+    <p>SmartFin — 智慧財報分析與未來預測平台</p>
+  </section>
+
+  <section class="about">
+    <h2>關於我們</h2>
+    <p>
+      SmartFin 致力於結合 AI 技術與開放資料，提供企業使用者快速、準確的財務分析與風險預測工具，
+      讓您在市場競爭中搶得先機。
+    </p>
+  </section>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<title>SmartFin 註冊</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif; /* 保留字體 */
+    text-align: center;
+    margin-top: 100px;
+    font-size: 16px; /* 設定基礎字體大小 */
+  }
+  h1 {
+    font-size: 4em; /* 將 H1 放大 */
+    margin-bottom: 1em;
+  }
+  input {
+    display: block;
+    margin: 20px auto;
+    padding: 20px;
+    width: 400px;
+    font-size: 2em; /* 放大輸入框文字 */
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+  button {
+    padding: 20px 60px;
+    background: #004aad;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 2em; /* 放大按鈕文字 */
+    margin-top: 20px;
+  }
+   button:hover {
+    background: #0066ff;
+  }
+  p {
+    font-size: 1.8em; /* 放大段落文字 */
+    margin-top: 30px;
+  }
+  p a {
+    font-size: 1em; /* 連結文字大小繼承 p */
+    color: #004aad;
+    text-decoration: none;
+  }
+  p a:hover {
+    text-decoration: underline;
+  }
+  .message { /* 合併 .error 和 .success 的基本樣式 */
+      margin-top: 20px;
+      font-size: 1.8em; /* 放大訊息文字 */
+  }
+  .error { color: red; }
+  .success { color: green; }
+</style>
+</head>
+<body>
+  <h1>SmartFin 註冊</h1>
+  <input type="text" id="username" placeholder="設定帳號" required />
+  <input type="password" id="password" placeholder="設定密碼" required />
+  <button onclick="register()">註冊</button>
+  <p class="message" id="messageArea"></p>
+  <p>已經有帳號了？ <a href="/login">點此登入</a></p> <script>
+    const API_BASE_URL = ""; // 相對路徑
+
+    async function register(){
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const messageArea = document.getElementById('messageArea');
+      messageArea.textContent = '';
+      messageArea.className = 'message';
+
+      const username = usernameInput.value;
+      const password = passwordInput.value;
+
+      if (!username || !password) {
+        messageArea.textContent = '請輸入帳號和密碼';
+        messageArea.className = 'message error';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json'
+          },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (response.ok) {
+          messageArea.textContent = '註冊成功！請前往登入頁面。';
+          messageArea.className = 'message success';
+          // setTimeout(() => { window.location.href = '/login'; }, 2000); // 延遲跳轉
+        } else {
+          const errorData = await response.json();
+          messageArea.textContent = `註冊失敗：${errorData.detail || response.statusText}`;
+          messageArea.className = 'message error';
+          console.error('Registration failed:', errorData);
+        }
+      } catch (error) {
+        messageArea.textContent = '註冊時發生網路錯誤，請稍後再試。';
+        messageArea.className = 'message error';
+        console.error('Registration network error:', error);
+      }
+    }
+  </script>
+</body>
+</html>

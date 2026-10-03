@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>查詢功能</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* Override external styles for this page */
+    body {
+        font-size: 16px; /* Base font size */
+        line-height: 1.6; /* Improve readability */
+    }
+    main {
+        padding: 2rem; /* Add padding to main content area */
+    }
+    h1 {
+        font-size: 3em; /* ~1.5x default h1 */
+        margin-bottom: 1.5em;
+    }
+    h2 {
+        font-size: 2.2em; /* ~1.5x default h2 */
+        margin-top: 2em;
+        margin-bottom: 1em;
+    }
+    section {
+        margin: 30px auto; /* Increase vertical margin */
+        padding: 30px; /* Increase padding inside sections */
+    }
+    input[type="text"] {
+        padding: 15px; /* Increase padding */
+        width: 60%; /* Adjust width */
+        font-size: 1.5em; /* Increase font size */
+        margin-right: 10px; /* Add margin */
+        border: 1px solid #ccc;
+        border-radius: 6px;
+    }
+    button {
+        padding: 15px 30px; /* Increase padding */
+        font-size: 1.5em; /* Increase font size */
+        margin-left: 5px; /* Adjust margin */
+        border-radius: 8px; /* Consistent border radius */
+    }
+    p {
+        font-size: 1.5em; /* Increase paragraph font size */
+        margin-top: 15px; /* Adjust margin */
+    }
+
+    #resultsTable {
+        margin-top: 30px; /* Increase top margin */
+        border-collapse: collapse;
+        width: 100%; /* Make table fill section width */
+        font-size: 1.3em; /* Increase table font size slightly less */
+    }
+    #resultsTable th, #resultsTable td {
+        border: 1px solid #ddd;
+        padding: 12px; /* Increase cell padding */
+        text-align: left;
+    }
+    #resultsTable th {
+        background-color: #f2f2f2;
+        font-weight: bold; /* Make header bold */
+    }
+
+    /* Adjust header styles specifically for this page if needed */
+    header h2 {
+        font-size: 1.8em; /* Header back link size */
+        margin: 0;
+    }
+    header {
+        padding: 20px 30px; /* Increase header padding */
+    }
+
+  </style>
+</head>
+<body>
+  <header>
+    <h2 onclick="window.location.href='/dashboard'">← 回主頁</h2>
+  </header>
+
+  <main>
+    <h1>查詢功能</h1>
+
+    <section>
+      <h2>從本地資料查詢公司 (六都金融業)</h2>
+      <input type="text" id="queryInput" placeholder="輸入統一編號或公司名稱">
+      <button onclick="searchLocalCompany()">查詢</button>
+      <p id="searchStatus"></p>
+      <table id="resultsTable" style="display:none;">
+          <thead>
+              <tr>
+                  <th>公司名稱</th>
+                  <th>統一編號</th>
+                  <th>資本總額</th>
+                  <th>實收資本額</th>
+              </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+      </table>
+    </section>
+
+     <section>
+      <h2>主動式風險管理 (外部查詢 - 暫停服務)</h2>
+      <input type="text" id="taxIdInput" placeholder="輸入統一編號">
+      <button onclick="checkPartnerStatus()">查詢營運狀態</button>
+      <p id="partnerStatus"></p>
+    </section>
+
+    <section>
+      <h2>賦予內部數據市場意義 (Market Contextualization - 待開發)</h2>
+      <button disabled>執行比對 (待開發)</button>
+      <p>提供客觀的市場定位參考，輔助企業策略調整。</p>
+    </section>
+
+  </main>
+
+  <script>
+    const API_BASE_URL = ""; // Relative path
+
+    async function searchLocalCompany() {
+      const queryInput = document.getElementById('queryInput');
+      const query = queryInput.value.trim();
+      const statusEl = document.getElementById('searchStatus');
+      const resultsTable = document.getElementById('resultsTable');
+      const resultsBody = document.getElementById('resultsBody');
+      statusEl.textContent = '';
+      resultsBody.innerHTML = '';
+      resultsTable.style.display = 'none';
+
+      const token = localStorage.getItem('accessToken');
+      const tokenType = localStorage.getItem('tokenType') || 'Bearer';
+
+      if (!token) {
+        statusEl.textContent = '錯誤：請先登入。';
+        return;
+      }
+      if (!query) {
+        statusEl.textContent = "請輸入查詢條件（統一編號或公司名稱）。";
+        return;
+      }
+
+      statusEl.textContent = "查詢中...";
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/local-company-search/?query=${encodeURIComponent(query)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `${tokenType} ${token}`,
+            'accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const results = await response.json();
+          if (results.length === 0) {
+            statusEl.textContent = '查無符合條件的公司資料。';
+          } else {
+            statusEl.textContent = `查詢到 ${results.length} 筆資料 (最多顯示 10 筆)：`;
+            results.forEach(company => {
+              const row = resultsBody.insertRow();
+              row.insertCell(0).textContent = company.company_name || 'N/A';
+              row.insertCell(1).textContent = company.unified_number || 'N/A';
+              // Format numbers or display N/A
+              const totalCapFormatted = company.total_capital !== null ? company.total_capital.toLocaleString() : 'N/A';
+              const paidCapFormatted = company.paid_in_capital !== null ? company.paid_in_capital.toLocaleString() : 'N/A';
+              row.insertCell(2).textContent = totalCapFormatted;
+              row.insertCell(3).textContent = paidCapFormatted;
+            });
+            resultsTable.style.display = 'table';
+          }
+        } else {
+          const errorData = await response.json();
+          statusEl.textContent = `查詢失敗：${errorData.detail || response.statusText}`;
+        }
+      } catch (error) {
+        console.error('Local search error:', error);
+        statusEl.textContent = '查詢時發生網路錯誤。';
+      }
+    }
+
+    async function checkPartnerStatus() {
+        const idInput = document.getElementById('taxIdInput');
+        const id = idInput.value.trim();
+        const statusEl = document.getElementById('partnerStatus');
+        statusEl.textContent = '';
+
+        const token = localStorage.getItem('accessToken');
+        const tokenType = localStorage.getItem('tokenType') || 'Bearer';
+
+        if (!token) {
+            statusEl.textContent = '錯誤：請先登入。';
+            return;
+        }
+        if (!id || !/^\d{8}$/.test(id)) {
+            statusEl.textContent = "請輸入有效的 8 位數字統一編號。";
+            return;
+        }
+
+        statusEl.textContent = "查詢中...";
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/partner-check/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `${tokenType} ${token}`,
+                    'accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.status === 503) {
+                 statusEl.textContent = `狀態：${data.status} (${data.reason})`;
+            } else if (response.ok) {
+                statusEl.textContent = `統一編號 ${id}：狀態 ${data.status} (${data.reason})`;
+            } else {
+                statusEl.textContent = `查詢失敗：${data.detail || response.statusText}`;
+            }
+        } catch (error) {
+            console.error('Partner check error:', error);
+            statusEl.textContent = '查詢時發生網路錯誤。';
+        }
+    }
+  </script>
+</body>
+</html>
